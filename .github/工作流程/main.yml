@@ -1,0 +1,65 @@
+
+name: build_ErfanGSIs
+
+on:
+#  release:
+#    types: [published]
+#  push:
+#    branches:
+#      - master
+#    paths:
+#      - '.config'
+#  schedule:
+#    - cron: 0 8 * * 5
+  watch:
+    types: [started]
+    
+env:
+  ROM_URL: https://cudrs4c97infki9et05t5ts9i24avrra3jc6demvgs19n1s87c5fv68b.qc.dolfincdnx.cn:32354/xdispatch75b2731b6f06ed7d/bigota.d.miui.com/V13.0.7.0.SLFCNXM/miui_DITING_V13.0.7.0.SLFCNXM_c3f9ad188c_12.0.zip?bsreqid=544e24cee81428a648756affac08f0c4
+  ROM_NAME: MIUI
+  BUILD_TYPE: ab
+  TZ: Asia/Shanghai
+
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+    if: github.event.repository.owner.id == github.event.sender.id
+
+    steps:
+       - name: Checkout
+         uses: actions/checkout@master
+           
+       - name: Initialization environment
+         run: |
+            sudo -E apt-get -qq install git wget
+       
+       - name: Clone ErfanGSI Source Code
+         run: git clone --recurse-submodules https://github.com/erfanoabdi/ErfanGSIs.git ErfanGSIs
+         
+       - name: Fix exit
+         run: |
+              sed -i 's/\|\| exit 1//g' $GITHUB_WORKSPACE/ErfanGSIs/url2GSI.sh
+              sed -i 's/exit 1//g' $GITHUB_WORKSPACE/ErfanGSIs/url2GSI.sh
+       
+       - name: Setting up ErfanGSI requirements
+         run: |
+              cd $GITHUB_WORKSPACE/ErfanGSIs
+              mkdir ./output
+              sudo bash ./setup.sh
+       
+       - name: Download Stock Rom & Generate GSI
+         run: |
+              cd  $GITHUB_WORKSPACE/ErfanGSIs
+              sudo bash ./url2GSI.sh -c --$BUILD_TYPE $ROM_URL $ROM_NAME
+       
+       - name: Zip GSI  
+         run: |
+              cd $GITHUB_WORKSPACE/ErfanGSIs/output
+              mkdir final
+              zip -r final/GSI.zip ./*
+       
+       - name: Upload GSI to WeTransfer
+         run: |
+              cd $GITHUB_WORKSPACE/ErfanGSIs/output
+              curl -sL https://git.io/file-transfer | sh
+              ./transfer wet ./final/GSI.zip
